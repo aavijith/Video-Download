@@ -20,7 +20,6 @@ def run_dummy_server():
 BOT_TOKEN = "8707989614:AAE_K3zE4Md_VxW_v40LrxyMceYtdvu0rPE"
 BOT_USERNAME = "VDOwnloadybot"
 
-# লিংক সাময়িকভাবে জমা রাখার জন্য ডিকশনারি
 user_links = {}
 
 def main_buttons():
@@ -38,8 +37,8 @@ def main_buttons():
 def quality_buttons():
     keyboard = [
         [
-            InlineKeyboardButton("🎬 Video (MP4)", callback_data="dl_video"),
-            InlineKeyboardButton("🎵 Audio", callback_data="dl_audio")
+            InlineKeyboardButton("🎬 Video (HD/SD)", callback_data="dl_video"),
+            InlineKeyboardButton("🎵 Audio (M4A/MP3)", callback_data="dl_audio")
         ]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -87,7 +86,6 @@ async def donate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🟢 <b>Bot Status:</b> Online & Working Fine!", parse_mode='HTML')
 
-# লিংক রিসিভ করা
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     if not url.startswith("http"):
@@ -97,12 +95,11 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_links[user_id] = url
 
     await update.message.reply_text(
-        "⚙️ <b>Select Format/Quality to Download:</b>",
+        "⚙️ <b>Select Format to Download:</b>",
         parse_mode='HTML',
         reply_markup=quality_buttons()
     )
 
-# বাটন ক্লিক ও ডাউনলোড প্রসেস
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -122,7 +119,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data in ["dl_video", "dl_audio"]:
         is_audio = query.data == "dl_audio"
-        mode_str = "Audio" if is_audio else "Video (MP4)"
+        mode_str = "Audio" if is_audio else "Video"
         
         await query.edit_message_text(f"⏳ Downloading <b>{mode_str}</b>...", parse_mode='HTML')
 
@@ -132,14 +129,15 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ydl_opts = {
                 'format': 'bestaudio[ext=m4a]/bestaudio/best',
                 'outtmpl': file_name,
-                'max_filesize': 50 * 1024 * 1024,
+                'max_filesize': 48 * 1024 * 1024,
                 'quiet': True,
             }
         else:
+            # ৫০MB এর নিচে রাখতে ৭২০p বা কম ফরম্যাট চুজ করা
             ydl_opts = {
-                'format': 'best[ext=mp4]/best',
+                'format': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best',
                 'outtmpl': file_name,
-                'max_filesize': 50 * 1024 * 1024,
+                'max_filesize': 48 * 1024 * 1024,
                 'quiet': True,
             }
 
@@ -158,8 +156,8 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             await query.delete_message()
 
-        except Exception as e:
-            await query.edit_message_text("❌ Failed! File might be over 50MB or link is invalid.")
+        except Exception:
+            await query.edit_message_text("❌ File is larger than 50MB (Telegram limit) or video is restricted.")
 
         finally:
             if os.path.exists(file_name):
@@ -172,7 +170,6 @@ if __name__ == '__main__':
     print("Bot is running...")
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     
-    # Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("legal", legal_command))
