@@ -39,7 +39,7 @@ def quality_buttons():
     keyboard = [
         [
             InlineKeyboardButton("🎬 Video (MP4)", callback_data="dl_video"),
-            InlineKeyboardButton("🎵 Audio (MP3)", callback_data="dl_audio")
+            InlineKeyboardButton("🎵 Audio", callback_data="dl_audio")
         ]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -87,14 +87,14 @@ async def donate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🟢 <b>Bot Status:</b> Online & Working Fine!", parse_mode='HTML')
 
-# লিংক মেসেজ রিসিভ করা এবং কোয়ালিটি অপশন দেওয়া
+# লিংক রিসিভ করা
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     if not url.startswith("http"):
         return
 
     user_id = update.effective_user.id
-    user_links[user_id] = url  # ইউজারের পাঠানো লিংক সেভ করে রাখা
+    user_links[user_id] = url
 
     await update.message.reply_text(
         "⚙️ <b>Select Format/Quality to Download:</b>",
@@ -102,7 +102,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=quality_buttons()
     )
 
-# বাটন ক্লিকে ফাইল প্রসেস ও ডাউনলোড করা
+# বাটন ক্লিক ও ডাউনলোড প্রসেস
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -122,24 +122,18 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data in ["dl_video", "dl_audio"]:
         is_audio = query.data == "dl_audio"
-        mode_str = "Audio (MP3)" if is_audio else "Video (MP4)"
+        mode_str = "Audio" if is_audio else "Video (MP4)"
         
         await query.edit_message_text(f"⏳ Downloading <b>{mode_str}</b>...", parse_mode='HTML')
 
-        file_ext = "mp3" if is_audio else "mp4"
-        file_name = f"{query.message.message_id}.{file_ext}"
+        file_name = f"{query.message.message_id}.mp4" if not is_audio else f"{query.message.message_id}.m4a"
 
         if is_audio:
             ydl_opts = {
-                'format': 'bestaudio/best',
+                'format': 'bestaudio[ext=m4a]/bestaudio/best',
                 'outtmpl': file_name,
                 'max_filesize': 50 * 1024 * 1024,
                 'quiet': True,
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192',
-                }],
             }
         else:
             ydl_opts = {
@@ -164,13 +158,12 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             await query.delete_message()
 
-        except Exception:
-            await query.edit_message_text("❌ Failed! File might be over 50MB or link is invalid/private.")
+        except Exception as e:
+            await query.edit_message_text("❌ Failed! File might be over 50MB or link is invalid.")
 
         finally:
             if os.path.exists(file_name):
                 os.remove(file_name)
-            # ডিকশনারি থেকে লিংক মুছে দেওয়া
             user_links.pop(user_id, None)
 
 if __name__ == '__main__':
@@ -179,17 +172,14 @@ if __name__ == '__main__':
     print("Bot is running...")
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     
-    # Command Handlers
+    # Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("legal", legal_command))
     app.add_handler(CommandHandler("donate", donate_command))
     app.add_handler(CommandHandler("status", status_command))
     
-    # Button Handlers
     app.add_handler(CallbackQueryHandler(button_click))
-    
-    # Message Handler
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
     
     app.run_polling(drop_pending_updates=True)
