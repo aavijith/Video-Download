@@ -2,7 +2,7 @@ import os
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 import yt_dlp
 
 # Render Free Plan Health Check Handler
@@ -20,28 +20,51 @@ def run_dummy_server():
 BOT_TOKEN = "8707989614:AAE_K3zE4Md_VxW_v40LrxyMceYtdvu0rPE"
 BOT_USERNAME = "VDOwnloadybot"
 
-def share_btn():
-    url = f"https://t.me/share/url?url=https://t.me/{BOT_USERNAME}&text=Download videos easily!"
-    return InlineKeyboardMarkup([[InlineKeyboardButton("🔗 Share with Friends", url=url)]])
+# লিংক সাময়িকভাবে জমা রাখার জন্য ডিকশনারি
+user_links = {}
+
+def main_buttons():
+    keyboard = [
+        [
+            InlineKeyboardButton("💡 How to Use", callback_data="help"),
+            InlineKeyboardButton("❤️ Support Us", callback_data="donate")
+        ],
+        [
+            InlineKeyboardButton("🔗 Share with Friends", url=f"https://t.me/share/url?url=https://t.me/{BOT_USERNAME}&text=Download%20videos%20easily!")
+        ]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def quality_buttons():
+    keyboard = [
+        [
+            InlineKeyboardButton("🎬 Video (MP4)", callback_data="dl_video"),
+            InlineKeyboardButton("🎵 Audio (MP3)", callback_data="dl_audio")
+        ]
+    ]
+    return InlineKeyboardMarkup(keyboard)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_first_name = update.effective_user.first_name
     text = (
+        f"👋 <b>Hi {user_first_name}! Welcome to Video Downloader Bot!</b>\n\n"
         "<b>How to use:</b>\n"
         "1. Open any social network (YouTube, Facebook, Instagram, TikTok, etc.).\n"
         "2. Copy the video link.\n"
         "3. Send the link here to download!\n\n"
         "<blockquote>👇 <b>SEND ME ANY VIDEO LINK NOW!</b> 📥</blockquote>"
     )
-    await update.message.reply_text(text, parse_mode='HTML', reply_markup=share_btn())
+    await update.message.reply_text(text, parse_mode='HTML', reply_markup=main_buttons())
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
         "💡 <b>How to use this bot:</b>\n\n"
         "• Copy any public video link from Facebook, Instagram, TikTok, YouTube Shorts, or Pinterest.\n"
         "• Paste and send it to this chat.\n"
-        "• Wait a few seconds, and the video will be sent to you!"
+        "• Choose Video or Audio format!\n"
+        "• Wait a few seconds, and the file will be sent to you!"
     )
-    await update.message.reply_text(help_text, parse_mode='HTML')
+    await update.message.reply_text(help_text, parse_mode='HTML', reply_markup=main_buttons())
 
 async def legal_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     legal_text = (
@@ -59,41 +82,98 @@ async def donate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🪙 <b>Binance Pay UID:</b> <code>927944043</code>\n\n"
         "আপনার সহযোগিতার জন্য অনেক অনেক ধন্যবাদ! 🙏"
     )
-    await update.message.reply_text(donate_text, parse_mode='HTML', reply_markup=share_btn())
+    await update.message.reply_text(donate_text, parse_mode='HTML', reply_markup=main_buttons())
 
-async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🟢 <b>Bot Status:</b> Online & Working Fine!", parse_mode='HTML')
+
+# লিংক মেসেজ রিসিভ করা এবং কোয়ালিটি অপশন দেওয়া
+async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     if not url.startswith("http"):
         return
 
-    msg = await update.message.reply_text("Downloading...")
-    file_name = f"{update.message.message_id}.mp4"
-    
-    ydl_opts = {
-        'format': 'best[ext=mp4]/best',
-        'outtmpl': file_name,
-        'max_filesize': 50 * 1024 * 1024,
-        'quiet': True,
-    }
+    user_id = update.effective_user.id
+    user_links[user_id] = url  # ইউজারের পাঠানো লিংক সেভ করে রাখা
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+    await update.message.reply_text(
+        "⚙️ <b>Select Format/Quality to Download:</b>",
+        parse_mode='HTML',
+        reply_markup=quality_buttons()
+    )
 
-        await msg.edit_text("Uploading...")
-        with open(file_name, 'rb') as video:
-            await update.message.reply_video(video=video, reply_markup=share_btn())
-        await msg.delete()
+# বাটন ক্লিকে ফাইল প্রসেস ও ডাউনলোড করা
+async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
 
-    except Exception:
-        await msg.edit_text("Failed! File might be over 50MB or link is invalid.")
+    if query.data == "help":
+        await help_command(query, context)
+        return
+    elif query.data == "donate":
+        await donate_command(query, context)
+        return
 
-    finally:
-        if os.path.exists(file_name):
-            os.remove(file_name)
+    url = user_links.get(user_id)
+    if not url:
+        await query.edit_message_text("❌ Link expired. Please send the link again.")
+        return
+
+    if query.data in ["dl_video", "dl_audio"]:
+        is_audio = query.data == "dl_audio"
+        mode_str = "Audio (MP3)" if is_audio else "Video (MP4)"
+        
+        await query.edit_message_text(f"⏳ Downloading <b>{mode_str}</b>...", parse_mode='HTML')
+
+        file_ext = "mp3" if is_audio else "mp4"
+        file_name = f"{query.message.message_id}.{file_ext}"
+
+        if is_audio:
+            ydl_opts = {
+                'format': 'bestaudio/best',
+                'outtmpl': file_name,
+                'max_filesize': 50 * 1024 * 1024,
+                'quiet': True,
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '192',
+                }],
+            }
+        else:
+            ydl_opts = {
+                'format': 'best[ext=mp4]/best',
+                'outtmpl': file_name,
+                'max_filesize': 50 * 1024 * 1024,
+                'quiet': True,
+            }
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+
+            await query.edit_message_text("📤 Uploading file to Telegram...")
+            caption_text = f"Downloaded via @{BOT_USERNAME}\n✨ Share with your friends!"
+
+            with open(file_name, 'rb') as file:
+                if is_audio:
+                    await query.message.reply_audio(audio=file, caption=caption_text, reply_markup=main_buttons())
+                else:
+                    await query.message.reply_video(video=file, caption=caption_text, reply_markup=main_buttons())
+            
+            await query.delete_message()
+
+        except Exception:
+            await query.edit_message_text("❌ Failed! File might be over 50MB or link is invalid/private.")
+
+        finally:
+            if os.path.exists(file_name):
+                os.remove(file_name)
+            # ডিকশনারি থেকে লিংক মুছে দেওয়া
+            user_links.pop(user_id, None)
 
 if __name__ == '__main__':
-    # Start web server thread for Render
     threading.Thread(target=run_dummy_server, daemon=True).start()
     
     print("Bot is running...")
@@ -104,9 +184,12 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("legal", legal_command))
     app.add_handler(CommandHandler("donate", donate_command))
-    app.add_handler(CommandHandler("support", donate_command))
+    app.add_handler(CommandHandler("status", status_command))
+    
+    # Button Handlers
+    app.add_handler(CallbackQueryHandler(button_click))
     
     # Message Handler
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, download_video))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
     
     app.run_polling(drop_pending_updates=True)
