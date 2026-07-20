@@ -1,7 +1,21 @@
 import os
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import yt_dlp
+
+# Render Free Plan Health Check Handler
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is alive!")
+
+def run_dummy_server():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    server.serve_forever()
 
 BOT_TOKEN = "8707989614:AAE_K3zE4Md_VxW_v40LrxyMceYtdvu0rPE"
 BOT_USERNAME = "VDOwnloadybot"
@@ -45,6 +59,9 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
             os.remove(file_name)
 
 if __name__ == '__main__':
+    # Start web server thread for Render
+    threading.Thread(target=run_dummy_server, daemon=True).start()
+    
     print("Bot is running...")
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
