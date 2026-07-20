@@ -37,8 +37,8 @@ def main_buttons():
 def quality_buttons():
     keyboard = [
         [
-            InlineKeyboardButton("🎬 Video (HD/SD)", callback_data="dl_video"),
-            InlineKeyboardButton("🎵 Audio (M4A/MP3)", callback_data="dl_audio")
+            InlineKeyboardButton("🎬 Video (MP4)", callback_data="dl_video"),
+            InlineKeyboardButton("🎵 Audio", callback_data="dl_audio")
         ]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -125,21 +125,24 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         file_name = f"{query.message.message_id}.mp4" if not is_audio else f"{query.message.message_id}.m4a"
 
+        # YouTube Block Bypass & Non-FFmpeg Format Configurations
+        ydl_opts = {
+            'outtmpl': file_name,
+            'max_filesize': 50 * 1024 * 1024,
+            'quiet': True,
+            'nocheckcertificate': True,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'ios']
+                }
+            }
+        }
+
         if is_audio:
-            ydl_opts = {
-                'format': 'bestaudio[ext=m4a]/bestaudio/best',
-                'outtmpl': file_name,
-                'max_filesize': 48 * 1024 * 1024,
-                'quiet': True,
-            }
+            ydl_opts['format'] = 'm4a/bestaudio/best'
         else:
-            # ৫০MB এর নিচে রাখতে ৭২০p বা কম ফরম্যাট চুজ করা
-            ydl_opts = {
-                'format': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best',
-                'outtmpl': file_name,
-                'max_filesize': 48 * 1024 * 1024,
-                'quiet': True,
-            }
+            # FFmpeg ছাড়া অডিও সহ সরাসরি ডাউনলোড হওয়ার মত কম্বাইন্ড ফরম্যাট
+            ydl_opts['format'] = 'b/ext=mp4/best[ext=mp4]/18/best'
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -156,8 +159,8 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             await query.delete_message()
 
-        except Exception:
-            await query.edit_message_text("❌ File is larger than 50MB (Telegram limit) or video is restricted.")
+        except Exception as e:
+            await query.edit_message_text("❌ Download failed! Video might be over 50MB or blocked by platform.")
 
         finally:
             if os.path.exists(file_name):
