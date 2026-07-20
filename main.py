@@ -30,7 +30,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "1. Open any social network (YouTube, Facebook, Instagram, TikTok, etc.).\n"
         "2. Copy the video link.\n"
         "3. Send the link here to download!\n\n"
-        "Send me any video link now!"
+        "<blockquote>👇 <b>SEND ME ANY VIDEO LINK NOW!</b> 📥</blockquote>"
     )
     await update.message.reply_text(text, parse_mode='HTML', reply_markup=share_btn())
 
