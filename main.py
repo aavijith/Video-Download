@@ -25,7 +25,41 @@ def share_btn():
     return InlineKeyboardMarkup([[InlineKeyboardButton("🔗 Share with Friends", url=url)]])
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Send any video link!", reply_markup=share_btn())
+    text = (
+        "<b>How to use:</b>\n"
+        "1. Open any social network (YouTube, Facebook, Instagram, TikTok, etc.).\n"
+        "2. Copy the video link.\n"
+        "3. Send the link here to download!\n\n"
+        "Send me any video link now!"
+    )
+    await update.message.reply_text(text, parse_mode='HTML', reply_markup=share_btn())
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_text = (
+        "💡 <b>How to use this bot:</b>\n\n"
+        "• Copy any public video link from Facebook, Instagram, TikTok, YouTube Shorts, or Pinterest.\n"
+        "• Paste and send it to this chat.\n"
+        "• Wait a few seconds, and the video will be sent to you!"
+    )
+    await update.message.reply_text(help_text, parse_mode='HTML')
+
+async def legal_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    legal_text = (
+        "⚖️ <b>Legal Info:</b>\n\n"
+        "This bot does not host or store any videos on its server. "
+        "All media content is fetched directly from third-party social platforms for personal educational use only."
+    )
+    await update.message.reply_text(legal_text, parse_mode='HTML')
+
+async def donate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    donate_text = (
+        "❤️ <b>Support Video Downloader Bot</b>\n\n"
+        "এই বটটি সবার জন্য সম্পূর্ণ ফ্রি! সার্ভার সচল রাখতে ও ফ্রি সেবা বজায় রাখতে আপনার ইচ্ছেমতো যেকোনো সহায়তার জন্য ধন্যবাদ:\n\n"
+        "📱 <b>bKash (Personal):</b> <code>01794419546</code>\n"
+        "🪙 <b>Binance Pay UID:</b> <code>927944043</code>\n\n"
+        "আপনার সহযোগিতার জন্য অনেক অনেক ধন্যবাদ! 🙏"
+    )
+    await update.message.reply_text(donate_text, parse_mode='HTML', reply_markup=share_btn())
 
 async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
@@ -64,6 +98,15 @@ if __name__ == '__main__':
     
     print("Bot is running...")
     app = ApplicationBuilder().token(BOT_TOKEN).build()
+    
+    # Command Handlers
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("legal", legal_command))
+    app.add_handler(CommandHandler("donate", donate_command))
+    app.add_handler(CommandHandler("support", donate_command))
+    
+    # Message Handler
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, download_video))
+    
     app.run_polling(drop_pending_updates=True)
