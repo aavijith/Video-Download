@@ -77,7 +77,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• Copy any public video link from YouTube, Facebook, Instagram, TikTok, Twitter/X, Pinterest, etc.\n"
         "• Paste and send it to this chat.\n"
         "• Preview details and choose preferred quality!\n\n"
-        "✨ <i>All video links (including YouTube long videos under 50MB) are now fully supported!</i>"
+        "✨ <i>All video links under 50MB are fully supported!</i>"
     )
     await update.message.reply_text(help_text, parse_mode='HTML', reply_markup=main_buttons())
 
@@ -171,11 +171,11 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data in ["dl_hd", "dl_sd", "dl_audio"]:
         if query.data == "dl_hd":
             mode_str = "HD Video"
-            ydl_format = 'best[filesize<50M]/best[ext=mp4]/best'
+            ydl_format = 'best[height<=720][filesize<50M]/best[height<=480]/worst'
             is_audio = False
         elif query.data == "dl_sd":
             mode_str = "SD Video"
-            ydl_format = 'worst[ext=mp4]/best'
+            ydl_format = 'worst[ext=mp4]/worst'
             is_audio = False
         else:
             mode_str = "Audio"
@@ -237,7 +237,7 @@ if __name__ == '__main__':
     threading.Thread(target=background_cleanup_task, daemon=True).start()
     threading.Thread(target=run_dummy_server, daemon=True).start()
     
-    print("Bot is running with full YouTube support and smart size optimization...")
+    print("Bot is fully adjusted and running...")
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
