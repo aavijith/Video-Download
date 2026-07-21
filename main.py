@@ -1,7 +1,6 @@
 import os
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import requests
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 import yt_dlp
@@ -125,61 +124,25 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"⏳ Downloading <b>{mode_str}</b>...", parse_mode='HTML')
 
         file_name = f"{query.message.message_id}.mp4" if not is_audio else f"{query.message.message_id}.m4a"
+        
+        # Safe and updated yt-dlp configurations
+        ydl_opts = {
+            'outtmpl': file_name,
+            'max_filesize': 50 * 1024 * 1024,
+            'quiet': True,
+            'nocheckcertificate': True,
+            'geo_bypass': True,
+            'format': 'bestaudio/best' if is_audio else 'best[ext=mp4]/best'
+        }
+
         download_success = False
-
-        # Using official Cobalt API endpoint for reliable downloading
         try:
-            payload = {
-                "url": url,
-                "vQuality": "720",
-                "filenamePattern": "basic"
-            }
-            headers = {
-                "Accept": "application/json",
-                "Content-Type": "application/json"
-            }
-            
-            response = requests.post("https://cobert.api.cool/api/json", json=payload, headers=headers, timeout=20)
-            if response.status_code == 200:
-                res_data = response.json()
-                media_link = res_data.get("url")
-                if not media_link and "picker" in res_data:
-                    media_link = res_data["picker"][0].get("url")
-                
-                if media_link:
-                    media_file = requests.get(media_link, stream=True, timeout=30)
-                    if media_file.status_code == 200:
-                        with open(file_name, 'wb') as f:
-                            for chunk in media_file.iter_content(chunk_size=1024*1024):
-                                if chunk:
-                                    f.write(chunk)
-                        if os.path.exists(file_name) and os.path.getsize(file_name) > 0:
-                            download_success = True
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+            if os.path.exists(file_name) and os.path.getsize(file_name) > 0:
+                download_success = True
         except Exception as e:
-            print(f"API Error: {e}")
-
-        # Fallback to enhanced yt-dlp if primary API fails
-        if not download_success:
-            ydl_opts = {
-                'outtmpl': file_name,
-                'max_filesize': 50 * 1024 * 1024,
-                'quiet': True,
-                'nocheckcertificate': True,
-                'geo_bypass': True,
-                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-            }
-            if is_audio:
-                ydl_opts['format'] = 'bestaudio/best'
-            else:
-                ydl_opts['format'] = 'best[ext=mp4]/best'
-
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([url])
-                if os.path.exists(file_name) and os.path.getsize(file_name) > 0:
-                    download_success = True
-            except Exception as e:
-                print(f"Yt-dlp Error: {e}")
+            print(f"Download Error: {e}")
 
         if download_success:
             await query.edit_message_text("📤 Uploading file to Telegram...")
