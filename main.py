@@ -31,7 +31,6 @@ def background_cleanup_task():
             for file in os.listdir('.'):
                 if file.endswith(('.mp4', '.m4a', '.webm', '.mp3')) and not file.startswith('main'):
                     file_path = os.path.join('.', file)
-                    # Delete files older than 10 minutes to avoid deleting active downloads
                     if time.time() - os.path.getmtime(file_path) > 600:
                         os.remove(file_path)
         except Exception as e:
@@ -121,7 +120,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
     
-    processing_msg = await update.message.reply_text("🔍 Fetching video details...", parse_mode='HTML')
+    processing_msg = await update.message.reply_text("🔍 <b>Fetching video details...</b> [░░░░░░░░░░] 0%", parse_mode='HTML')
     
     ydl_info_opts = {'quiet': True, 'skip_download': True}
     video_title = "Downloaded Video"
@@ -195,10 +194,11 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ydl_format = 'bestaudio/best'
             is_audio = True
 
+        # Professional Animated Progress Step 1
         if query.message.photo:
-            await query.edit_message_caption(caption=f"⏳ Downloading <b>{mode_str}</b>, please wait...", parse_mode='HTML')
+            await query.edit_message_caption(caption=f"⏳ <b>Connecting & Downloading {mode_str}...</b>\n[████░░░░░░] 40%", parse_mode='HTML')
         else:
-            await query.edit_message_text(f"⏳ Downloading <b>{mode_str}</b>, please wait...", parse_mode='HTML')
+            await query.edit_message_text(f"⏳ <b>Connecting & Downloading {mode_str}...</b>\n[████░░░░░░] 40%", parse_mode='HTML')
 
         file_name = f"{query.message.message_id}.mp4" if not is_audio else f"{query.message.message_id}.m4a"
         
@@ -221,10 +221,11 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             print(f"Download Error: {e}")
 
         if download_success:
+            # Professional Animated Progress Step 2
             if query.message.photo:
-                await query.edit_message_caption(caption="📤 Uploading file to Telegram...")
+                await query.edit_message_caption(caption=f"📤 <b>Preparing & Uploading to Telegram...</b>\n[██████████] 100%", parse_mode='HTML')
             else:
-                await query.edit_message_text("📤 Uploading file to Telegram...")
+                await query.edit_message_text(f"📤 <b>Preparing & Uploading to Telegram...</b>\n[██████████] 100%", parse_mode='HTML')
                 
             caption_text = f"<b>{user_info['title']}</b>\n\nDownloaded via @{BOT_USERNAME}\n✨ Share with your friends!"
 
@@ -245,13 +246,10 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_data_store.pop(user_id, None)
 
 if __name__ == '__main__':
-    # Start background thread for auto-cleanup
     threading.Thread(target=background_cleanup_task, daemon=True).start()
-    
-    # Start dummy web server for Render health check
     threading.Thread(target=run_dummy_server, daemon=True).start()
     
-    print("Bot is running with auto-cleanup...")
+    print("Bot is running with professional animated steps...")
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
