@@ -1,6 +1,7 @@
 import os
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
+import requests
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 import yt_dlp
@@ -124,49 +125,70 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"⏳ Downloading <b>{mode_str}</b>...", parse_mode='HTML')
 
         file_name = f"{query.message.message_id}.mp4" if not is_audio else f"{query.message.message_id}.m4a"
+        download_success = False
 
-        # YouTube Bypass Options Integrated Here
-        ydl_opts = {
-            'outtmpl': file_name,
-            'max_filesize': 50 * 1024 * 1024,
-            'quiet': True,
-            'nocheckcertificate': True,
-            'geo_bypass': True,
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'web']
-                }
-            }
-        }
-
-        if is_audio:
-            ydl_opts['format'] = 'bestaudio/best'
-        else:
-            ydl_opts['format'] = 'best[ext=mp4]/best'
-
+        # Method 1: Try via Cobalt API (Fastest and bypasses YouTube blocks)
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
+            api_url = "https://covert-api.elias.cc/api/json" if "youtube" in url or "youtu.be" in url else "https://covert-api.elias.cc/api/json"
+            # Let's use public cobalt instance API
+            payload = {"url": url}
+            headers = {"Accept": "application/json", "Content-Type": "application/json"}
+            
+            response = requests.post("https://api.cobalt.tools/api/json", json=payload, headers=headers, timeout=15)
+            res_data = response.json()
+            
+            if res_data.get("status") in ["stream", "redirect", "picker"]:
+                media_link = res_data.get("url") or (res_data.get("picker")[0].get("url") if res_data.get("picker") else None)
+                if media_link:
+                    media_file = requests.get(media_link, stream=True, timeout=30)
+                    with open(file_name, 'wb') as f:
+                        for chunk in media_file.iter_content(chunk_size=1024*1024):
+                            if chunk:
+                                f.write(chunk)
+                    download_success = True
+        except Exception as e:
+            print(f"Cobalt API Error: {e}")
 
+        # Method 2: Fallback to yt-dlp if API fails
+        if not download_success:
+            ydl_opts = {
+                'outtmpl': file_name,
+                'max_filesize': 50 * 1024 * 1024,
+                'quiet': True,
+                'nocheckcertificate': True,
+                'geo_bypass': True,
+            }
+            if is_audio:
+                ydl_opts['format'] = 'bestaudio/best'
+            else:
+                ydl_opts['format'] = 'best[ext=mp4]/best'
+
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url])
+                download_success = True
+            except Exception as e:
+                print(f"Yt-dlp Error: {e}")
+
+        if download_success and os.path.exists(file_name) and os.path.getsize(file_name) > 0:
             await query.edit_message_text("📤 Uploading file to Telegram...")
             caption_text = f"Downloaded via @{BOT_USERNAME}\n✨ Share with your friends!"
 
-            with open(file_name, 'rb') as file:
-                if is_audio:
-                    await query.message.reply_audio(audio=file, caption=caption_text, reply_markup=main_buttons())
-                else:
-                    await query.message.reply_video(video=file, caption=caption_text, reply_markup=main_buttons())
-            
-            await query.delete_message()
-
-        except Exception as e:
+            try:
+                with open(file_name, 'rb') as file:
+                    if is_audio:
+                        await query.message.reply_audio(audio=file, caption=caption_text, reply_markup=main_buttons())
+                    else:
+                        await query.message.reply_video(video=file, caption=caption_text, reply_markup=main_buttons())
+                await query.delete_message()
+            except Exception as upload_err:
+                await query.edit_message_text(f"❌ Upload failed: File might be larger than 50MB.")
+        else:
             await query.edit_message_text("❌ Download failed! Video might be over 50MB or blocked by platform.")
 
-        finally:
-            if os.path.exists(file_name):
-                os.remove(file_name)
-            user_links.pop(user_id, None)
+        if os.path.exists(file_name):
+            os.remove(file_name)
+        user_links.pop(user_id, None)
 
 if __name__ == '__main__':
     threading.Thread(target=run_dummy_server, daemon=True).start()
