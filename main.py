@@ -127,29 +127,38 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file_name = f"{query.message.message_id}.mp4" if not is_audio else f"{query.message.message_id}.m4a"
         download_success = False
 
-        # Method 1: Try via Cobalt API (Fastest and bypasses YouTube blocks)
+        # Using official Cobalt API endpoint for reliable downloading
         try:
-            api_url = "https://covert-api.elias.cc/api/json" if "youtube" in url or "youtu.be" in url else "https://covert-api.elias.cc/api/json"
-            # Let's use public cobalt instance API
-            payload = {"url": url}
-            headers = {"Accept": "application/json", "Content-Type": "application/json"}
+            payload = {
+                "url": url,
+                "vQuality": "720",
+                "filenamePattern": "basic"
+            }
+            headers = {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            }
             
-            response = requests.post("https://api.cobalt.tools/api/json", json=payload, headers=headers, timeout=15)
-            res_data = response.json()
-            
-            if res_data.get("status") in ["stream", "redirect", "picker"]:
-                media_link = res_data.get("url") or (res_data.get("picker")[0].get("url") if res_data.get("picker") else None)
+            response = requests.post("https://cobert.api.cool/api/json", json=payload, headers=headers, timeout=20)
+            if response.status_code == 200:
+                res_data = response.json()
+                media_link = res_data.get("url")
+                if not media_link and "picker" in res_data:
+                    media_link = res_data["picker"][0].get("url")
+                
                 if media_link:
                     media_file = requests.get(media_link, stream=True, timeout=30)
-                    with open(file_name, 'wb') as f:
-                        for chunk in media_file.iter_content(chunk_size=1024*1024):
-                            if chunk:
-                                f.write(chunk)
-                    download_success = True
+                    if media_file.status_code == 200:
+                        with open(file_name, 'wb') as f:
+                            for chunk in media_file.iter_content(chunk_size=1024*1024):
+                                if chunk:
+                                    f.write(chunk)
+                        if os.path.exists(file_name) and os.path.getsize(file_name) > 0:
+                            download_success = True
         except Exception as e:
-            print(f"Cobalt API Error: {e}")
+            print(f"API Error: {e}")
 
-        # Method 2: Fallback to yt-dlp if API fails
+        # Fallback to enhanced yt-dlp if primary API fails
         if not download_success:
             ydl_opts = {
                 'outtmpl': file_name,
@@ -157,6 +166,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 'quiet': True,
                 'nocheckcertificate': True,
                 'geo_bypass': True,
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
             }
             if is_audio:
                 ydl_opts['format'] = 'bestaudio/best'
@@ -166,11 +176,12 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     ydl.download([url])
-                download_success = True
+                if os.path.exists(file_name) and os.path.getsize(file_name) > 0:
+                    download_success = True
             except Exception as e:
                 print(f"Yt-dlp Error: {e}")
 
-        if download_success and os.path.exists(file_name) and os.path.getsize(file_name) > 0:
+        if download_success:
             await query.edit_message_text("📤 Uploading file to Telegram...")
             caption_text = f"Downloaded via @{BOT_USERNAME}\n✨ Share with your friends!"
 
