@@ -37,7 +37,7 @@ def main_buttons():
 def quality_buttons():
     keyboard = [
         [
-            InlineKeyboardButton("🎬 Video (MP4)", callback_data="dl_video"),
+            InlineKeyboardButton("🎬 Video", callback_data="dl_video"),
             InlineKeyboardButton("🎵 Audio", callback_data="dl_audio")
         ]
     ]
@@ -58,7 +58,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
         "💡 <b>How to use this bot:</b>\n\n"
-        "• Copy any public video link from Facebook, Instagram, TikTok, YouTube Shorts, or Pinterest.\n"
+        "• Copy any public video link from YouTube, Facebook, Instagram, TikTok, etc.\n"
         "• Paste and send it to this chat.\n"
         "• Choose Video or Audio format!\n"
         "• Wait a few seconds, and the file will be sent to you!"
@@ -125,24 +125,25 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         file_name = f"{query.message.message_id}.mp4" if not is_audio else f"{query.message.message_id}.m4a"
 
-        # YouTube Block Bypass & Non-FFmpeg Format Configurations
+        # YouTube Bypass Options Integrated Here
         ydl_opts = {
             'outtmpl': file_name,
             'max_filesize': 50 * 1024 * 1024,
             'quiet': True,
             'nocheckcertificate': True,
+            'geo_bypass': True,
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android', 'ios']
+                    'player_client': ['android', 'web']
                 }
             }
         }
 
         if is_audio:
-            ydl_opts['format'] = 'm4a/bestaudio/best'
+            ydl_opts['format'] = 'bestaudio/best'
         else:
-            # FFmpeg ছাড়া অডিও সহ সরাসরি ডাউনলোড হওয়ার মত কম্বাইন্ড ফরম্যাট
-            ydl_opts['format'] = 'b/ext=mp4/best[ext=mp4]/18/best'
+            ydl_opts['format'] = 'best[ext=mp4]/best'
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
