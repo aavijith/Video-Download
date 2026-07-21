@@ -48,7 +48,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         f"👋 <b>Hi {user_first_name}! Welcome to Video Downloader Bot!</b>\n\n"
         "<b>How to use:</b>\n"
-        "1. Open YouTube Shorts, Facebook, Instagram, TikTok, etc.\n"
+        "1. Open YouTube Shorts, Facebook, Instagram, TikTok, Twitter, etc.\n"
         "2. Copy the video link.\n"
         "3. Send the link here to download!\n\n"
         "❌ <i>Note: YouTube long video download is not possible here (Shorts allowed).</i>\n\n"
@@ -59,7 +59,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
         "💡 <b>How to use this bot:</b>\n\n"
-        "• Copy any public video link from YouTube Shorts, Facebook, Instagram, TikTok, etc.\n"
+        "• Copy any public video link from YouTube Shorts, Facebook, Instagram, TikTok, Twitter/X, etc.\n"
         "• Paste and send it to this chat.\n"
         "• Choose Video or Audio format!\n\n"
         "❌ <i>YouTube long videos are disabled due to platform restrictions, but Shorts work fine!</i>"
@@ -95,7 +95,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Check if it's YouTube, but allow YouTube Shorts
     if ("youtube.com" in url or "youtu.be" in url) and "/shorts/" not in url:
         await update.message.reply_text(
-            "❌ **দুঃখিত!** এই বটের মাধ্যমে ইউটিউব লং ভিডিও ডাউনলোড করা সম্ভব নয়। তবে আপনি **YouTube Shorts**, Facebook বা Instagram-এর লিংক দিতে পারেন!",
+            "❌ **দুঃখিত!** এই বটের মাধ্যমে ইউটিউব লং ভিডিও ডাউনলোড করা সম্ভব নয়। তবে আপনি **YouTube Shorts, Facebook, Instagram, TikTok, Twitter** বা অন্যান্য প্ল্যাটফর্মের লিংক দিতে পারেন!",
             parse_mode='Markdown',
             reply_markup=main_buttons()
         )
