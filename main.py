@@ -1,4 +1,5 @@
 import os
+import time
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -22,6 +23,20 @@ BOT_USERNAME = "VDOwnloadybot"
 
 # Store user data temporarily
 user_data_store = {}
+
+# Background Auto-Cleanup Task: Deletes stray/leftover media files every 10 minutes
+def background_cleanup_task():
+    while True:
+        try:
+            for file in os.listdir('.'):
+                if file.endswith(('.mp4', '.m4a', '.webm', '.mp3')) and not file.startswith('main'):
+                    file_path = os.path.join('.', file)
+                    # Delete files older than 10 minutes to avoid deleting active downloads
+                    if time.time() - os.path.getmtime(file_path) > 600:
+                        os.remove(file_path)
+        except Exception as e:
+            print(f"Cleanup Error: {e}")
+        time.sleep(600)
 
 def main_buttons():
     keyboard = [
@@ -96,7 +111,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not url.startswith("http"):
         return
 
-    # Check if it's YouTube, but allow YouTube Shorts
     if ("youtube.com" in url or "youtu.be" in url) and "/shorts/" not in url:
         await update.message.reply_text(
             "❌ **দুঃখিত!** এই বটের মাধ্যমে ইউটিউব লং ভিডিও ডাউনলোড করা সম্ভব নয়। তবে আপনি **YouTube Shorts, Facebook, Instagram, TikTok, Twitter** বা অন্যান্য প্ল্যাটফর্মের লিংক দিতে পারেন!",
@@ -107,7 +121,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
     
-    # Fetch video info (Title & Thumbnail) for preview
     processing_msg = await update.message.reply_text("🔍 Fetching video details...", parse_mode='HTML')
     
     ydl_info_opts = {'quiet': True, 'skip_download': True}
@@ -174,7 +187,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ydl_format = 'best[ext=mp4]/best'
             is_audio = False
         elif query.data == "dl_sd":
-            m_str = "SD Video"
+            mode_str = "SD Video"
             ydl_format = 'worst[ext=mp4]/best'
             is_audio = False
         else:
@@ -182,7 +195,10 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ydl_format = 'bestaudio/best'
             is_audio = True
 
-        await query.edit_message_caption(caption=f"⏳ Downloading <b>{mode_str}</b>, please wait...", parse_mode='HTML') if query.message.photo else await query.edit_message_text(f"⏳ Downloading <b>{mode_str}</b>, please wait...", parse_mode='HTML')
+        if query.message.photo:
+            await query.edit_message_caption(caption=f"⏳ Downloading <b>{mode_str}</b>, please wait...", parse_mode='HTML')
+        else:
+            await query.edit_message_text(f"⏳ Downloading <b>{mode_str}</b>, please wait...", parse_mode='HTML')
 
         file_name = f"{query.message.message_id}.mp4" if not is_audio else f"{query.message.message_id}.m4a"
         
@@ -205,7 +221,11 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             print(f"Download Error: {e}")
 
         if download_success:
-            await query.edit_message_caption(caption="📤 Uploading file to Telegram...") if query.message.photo else await query.edit_message_text("📤 Uploading file to Telegram...")
+            if query.message.photo:
+                await query.edit_message_caption(caption="📤 Uploading file to Telegram...")
+            else:
+                await query.edit_message_text("📤 Uploading file to Telegram...")
+                
             caption_text = f"<b>{user_info['title']}</b>\n\nDownloaded via @{BOT_USERNAME}\n✨ Share with your friends!"
 
             try:
@@ -225,9 +245,13 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_data_store.pop(user_id, None)
 
 if __name__ == '__main__':
+    # Start background thread for auto-cleanup
+    threading.Thread(target=background_cleanup_task, daemon=True).start()
+    
+    # Start dummy web server for Render health check
     threading.Thread(target=run_dummy_server, daemon=True).start()
     
-    print("Bot is running...")
+    print("Bot is running with auto-cleanup...")
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
