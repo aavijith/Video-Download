@@ -48,20 +48,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         f"👋 <b>Hi {user_first_name}! Welcome to Video Downloader Bot!</b>\n\n"
         "<b>How to use:</b>\n"
-        "1. Open any social network (YouTube, Facebook, Instagram, TikTok, etc.).\n"
+        "1. Open YouTube Shorts, Facebook, Instagram, TikTok, etc.\n"
         "2. Copy the video link.\n"
         "3. Send the link here to download!\n\n"
-        "<blockquote>👇 <b>SEND ME ANY VIDEO LINK NOW!</b> 📥</blockquote>"
+        "❌ <i>Note: YouTube long video download is not possible here (Shorts allowed).</i>\n\n"
+        "<blockquote>👇 <b>SEND ME ANY SUPPORTED LINK NOW!</b> 📥</blockquote>"
     )
     await update.message.reply_text(text, parse_mode='HTML', reply_markup=main_buttons())
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
         "💡 <b>How to use this bot:</b>\n\n"
-        "• Copy any public video link from YouTube, Facebook, Instagram, TikTok, etc.\n"
+        "• Copy any public video link from YouTube Shorts, Facebook, Instagram, TikTok, etc.\n"
         "• Paste and send it to this chat.\n"
-        "• Choose Video or Audio format!\n"
-        "• Wait a few seconds, and the file will be sent to you!"
+        "• Choose Video or Audio format!\n\n"
+        "❌ <i>YouTube long videos are disabled due to platform restrictions, but Shorts work fine!</i>"
     )
     await update.message.reply_text(help_text, parse_mode='HTML', reply_markup=main_buttons())
 
@@ -89,6 +90,15 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     if not url.startswith("http"):
+        return
+
+    # Check if it's YouTube, but allow YouTube Shorts
+    if ("youtube.com" in url or "youtu.be" in url) and "/shorts/" not in url:
+        await update.message.reply_text(
+            "❌ **দুঃখিত!** এই বটের মাধ্যমে ইউটিউব লং ভিডিও ডাউনলোড করা সম্ভব নয়। তবে আপনি **YouTube Shorts**, Facebook বা Instagram-এর লিংক দিতে পারেন!",
+            parse_mode='Markdown',
+            reply_markup=main_buttons()
+        )
         return
 
     user_id = update.effective_user.id
@@ -125,7 +135,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         file_name = f"{query.message.message_id}.mp4" if not is_audio else f"{query.message.message_id}.m4a"
         
-        # Safe and updated yt-dlp configurations
         ydl_opts = {
             'outtmpl': file_name,
             'max_filesize': 50 * 1024 * 1024,
