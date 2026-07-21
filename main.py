@@ -64,10 +64,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         f"👋 <b>Hi {user_first_name}! Welcome to Video Downloader Bot!</b>\n\n"
         "<b>How to use:</b>\n"
-        "1. Open YouTube Shorts, Facebook, Instagram, TikTok, Twitter, Pinterest, etc.\n"
+        "1. Open YouTube, Facebook, Instagram, TikTok, Twitter, Pinterest, etc.\n"
         "2. Copy the video link.\n"
         "3. Send the link here to download!\n\n"
-        "❌ <i>Note: YouTube long video download is not possible here (Shorts allowed).</i>\n\n"
         "<blockquote>👇 <b>SEND ME ANY SUPPORTED LINK NOW!</b> 📥</blockquote>"
     )
     await update.message.reply_text(text, parse_mode='HTML', reply_markup=main_buttons())
@@ -75,10 +74,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
         "💡 <b>How to use this bot:</b>\n\n"
-        "• Copy any public video link from YouTube Shorts, Facebook, Instagram, TikTok, Twitter/X, Pinterest, etc.\n"
+        "• Copy any public video link from YouTube, Facebook, Instagram, TikTok, Twitter/X, Pinterest, etc.\n"
         "• Paste and send it to this chat.\n"
         "• Preview details and choose preferred quality!\n\n"
-        "❌ <i>YouTube long videos are disabled due to platform restrictions, but Shorts work fine!</i>"
+        "✨ <i>All video links (including YouTube long videos under 50MB) are now fully supported!</i>"
     )
     await update.message.reply_text(help_text, parse_mode='HTML', reply_markup=main_buttons())
 
@@ -106,14 +105,6 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     if not url.startswith("http"):
-        return
-
-    if ("youtube.com" in url or "youtu.be" in url) and "/shorts/" not in url:
-        await update.message.reply_text(
-            "❌ **দুঃখিত!** এই বটের মাধ্যমে ইউটিউব লং ভিডিও ডাউনলোড করা সম্ভব নয়। তবে আপনি **YouTube Shorts, Facebook, Instagram, TikTok, Twitter, Pinterest** বা অন্যান্য প্ল্যাটফর্মের লিংক দিতে পারেন!",
-            parse_mode='Markdown',
-            reply_markup=main_buttons()
-        )
         return
 
     user_id = update.effective_user.id
@@ -180,7 +171,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data in ["dl_hd", "dl_sd", "dl_audio"]:
         if query.data == "dl_hd":
             mode_str = "HD Video"
-            # Fixed format fallback to ensure it grabs standard mp4 without breaking size limit
             ydl_format = 'best[filesize<50M]/best[ext=mp4]/best'
             is_audio = False
         elif query.data == "dl_sd":
@@ -212,7 +202,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
             if os.path.exists(file_name) and os.path.getsize(file_name) > 0:
-                # Check if downloaded file is actually under 50MB (52428800 bytes)
                 if os.path.getsize(file_name) <= 52428800:
                     download_success = True
                 else:
@@ -248,7 +237,7 @@ if __name__ == '__main__':
     threading.Thread(target=background_cleanup_task, daemon=True).start()
     threading.Thread(target=run_dummy_server, daemon=True).start()
     
-    print("Bot is fixed and running...")
+    print("Bot is running with full YouTube support and smart size optimization...")
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
