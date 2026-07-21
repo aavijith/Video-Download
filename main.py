@@ -21,10 +21,8 @@ def run_dummy_server():
 BOT_TOKEN = "8707989614:AAE_K3zE4Md_VxW_v40LrxyMceYtdvu0rPE"
 BOT_USERNAME = "VDOwnloadybot"
 
-# Store user data temporarily
 user_data_store = {}
 
-# Background Auto-Cleanup Task: Deletes stray/leftover media files every 10 minutes
 def background_cleanup_task():
     while True:
         try:
@@ -119,8 +117,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_id = update.effective_user.id
-    
-    processing_msg = await update.message.reply_text("🔍 <b>Fetching video details...</b> [░░░░░░░░░░] 0%", parse_mode='HTML')
+    processing_msg = await update.message.reply_text("🔍 <b>Fetching video details...</b>", parse_mode='HTML')
     
     ydl_info_opts = {'quiet': True, 'skip_download': True}
     video_title = "Downloaded Video"
@@ -194,11 +191,10 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ydl_format = 'bestaudio/best'
             is_audio = True
 
-        # Professional Animated Progress Step 1
         if query.message.photo:
-            await query.edit_message_caption(caption=f"⏳ <b>Connecting & Downloading {mode_str}...</b>\n[████░░░░░░] 40%", parse_mode='HTML')
+            await query.edit_message_caption(caption=f"⏳ <b>Downloading {mode_str}... Please wait.</b>", parse_mode='HTML')
         else:
-            await query.edit_message_text(f"⏳ <b>Connecting & Downloading {mode_str}...</b>\n[████░░░░░░] 40%", parse_mode='HTML')
+            await query.edit_message_text(f"⏳ <b>Downloading {mode_str}... Please wait.</b>", parse_mode='HTML')
 
         file_name = f"{query.message.message_id}.mp4" if not is_audio else f"{query.message.message_id}.m4a"
         
@@ -221,11 +217,10 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             print(f"Download Error: {e}")
 
         if download_success:
-            # Professional Animated Progress Step 2
             if query.message.photo:
-                await query.edit_message_caption(caption=f"📤 <b>Preparing & Uploading to Telegram...</b>\n[██████████] 100%", parse_mode='HTML')
+                await query.edit_message_caption(caption="📤 <b>Uploading file to Telegram...</b>", parse_mode='HTML')
             else:
-                await query.edit_message_text(f"📤 <b>Preparing & Uploading to Telegram...</b>\n[██████████] 100%", parse_mode='HTML')
+                await query.edit_message_text("📤 <b>Uploading file to Telegram...</b>", parse_mode='HTML')
                 
             caption_text = f"<b>{user_info['title']}</b>\n\nDownloaded via @{BOT_USERNAME}\n✨ Share with your friends!"
 
@@ -249,7 +244,7 @@ if __name__ == '__main__':
     threading.Thread(target=background_cleanup_task, daemon=True).start()
     threading.Thread(target=run_dummy_server, daemon=True).start()
     
-    print("Bot is running with professional animated steps...")
+    print("Bot is running smoothly...")
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
