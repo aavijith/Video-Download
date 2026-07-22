@@ -103,7 +103,14 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
+    
+    # ইউজার যদি লিংক না পাঠিয়ে আবল-তাবোল বা সাধারণ লেখা পাঠায়
     if not url.startswith("http"):
+        smart_error_text = (
+            "❌ <b>Invalid Input!</b> Please send a valid video link.\n\n"
+            "👉 <i>দয়া করে যেকোনো প্ল্যাটফর্মের ভিডিও লিংক দিন।</i>"
+        )
+        await update.message.reply_text(smart_error_text, parse_mode='HTML', reply_markup=main_buttons())
         return
 
     user_id = update.effective_user.id
@@ -226,7 +233,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as upload_err:
                 await query.edit_message_text(f"❌ Upload failed: File might be larger than 50MB.")
         else:
-            # যখনই ডাউনলোড ফেইল করবে বা সাইজ বড় হবে, সরাসরি ২য় বটের বাটন চলে আসবে
             second_bot_keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("🚀 Download via @downflybot", url="https://t.me/downflybot")]
             ])
@@ -262,3 +268,4 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
     
     app.run_polling(drop_pending_updates=True)
+
