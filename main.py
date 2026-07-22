@@ -108,7 +108,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not url.startswith("http"):
         return
 
-    # YouTube long video restriction check
     if ("youtube.com" in url or "youtu.be" in url) and "/shorts/" not in url:
         await update.message.reply_text(
             "❌ **দুঃখিত!** এই বটের মাধ্যমে ইউটিউব লং ভিডিও ডাউনলোড করা সম্ভব নয়। তবে আপনি **YouTube Shorts, Facebook, Instagram, TikTok, Twitter, Pinterest** বা অন্যান্য প্ল্যাটফর্মের লিংক দিতে পারেন!",
@@ -237,7 +236,19 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as upload_err:
                 await query.edit_message_text(f"❌ Upload failed: File might be larger than 50MB.")
         else:
-            await query.edit_message_text("❌ Download failed! Video size is larger than 50MB or blocked by platform.")
+            second_bot_keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🚀 Download via @downflybot", url="https://t.me/downflybot")]
+            ])
+            
+            error_text = (
+                "❌ <b>Download failed!</b> Video size is larger than 50MB or restricted.\n\n"
+                "👉 <i>Don't worry! You can instantly download this long video or audio using our second bot:</i>"
+            )
+            
+            if query.message.photo:
+                await query.edit_message_caption(caption=error_text, parse_mode='HTML', reply_markup=second_bot_keyboard)
+            else:
+                await query.edit_message_text(text=error_text, parse_mode='HTML', reply_markup=second_bot_keyboard)
 
         if os.path.exists(file_name):
             os.remove(file_name)
@@ -247,7 +258,7 @@ if __name__ == '__main__':
     threading.Thread(target=background_cleanup_task, daemon=True).start()
     threading.Thread(target=run_dummy_server, daemon=True).start()
     
-    print("Bot is running with the new API token...")
+    print("Bot is running perfectly...")
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
